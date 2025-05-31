@@ -5,13 +5,16 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-
-func SetupMenu(myWindow fyne.Window, openRecent func(file string), recentFiles []string) {
+func SetupMenu(myWindow fyne.Window, recentFiles []string) {
 	fileMenuItems := []*fyne.MenuItem{
 		fyne.NewMenuItem("Open...", func() {
 			println("Open clicked")
 			// implement open logic
 		}),
+	}
+
+	openRecent := func(file string) {
+		println("Open recent file:", file)
 	}
 
 	// Create submenu for "Recent Files"

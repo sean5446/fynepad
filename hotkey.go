@@ -10,10 +10,10 @@ type HotkeyEntry struct {
 	onShortcut func(shortcut fyne.Shortcut)
 }
 
-
 func NewHotkeyEntry(onShortcut func(fyne.Shortcut)) *HotkeyEntry {
 	e := &HotkeyEntry{onShortcut: onShortcut}
 	e.MultiLine = true
+	e.Text = "some text"
 	e.ExtendBaseWidget(e)
 	// e.Wrapping = fyne.TextWrapWord
 	return e
