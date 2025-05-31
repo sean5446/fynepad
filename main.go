@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -22,8 +24,11 @@ type TabData struct {
 }
 
 const sessionFile = "session.json"
+const defaultFontSize float32 = 14
 
 var tabCount int = 1
+var fontSize float32 = defaultFontSize
+
 
 func main() {
 	myApp := app.New()
@@ -36,7 +41,7 @@ func main() {
 	loadSession(tabs, tabMap)
 	myWindow.SetContent(tabs)
 
-	registerShortcuts(tabs, tabMap, myWindow)
+	registerShortcuts(tabs, tabMap, myWindow, myApp)
 
 	myWindow.SetCloseIntercept(func() {
 		saveSession(tabs, tabMap)
@@ -46,13 +51,8 @@ func main() {
 	myWindow.ShowAndRun()
 }
 
-func closeCurrentTab(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry) {
-	current := tabs.Selected()
-	if current == nil || len(tabs.Items) == 1 {
-		return // Don't close the last tab
-	}
-	tabs.Remove(current)
-	delete(tabMap, current)
+func applyFontSize(app fyne.App, size float32) {
+	app.Settings().SetTheme(&customTheme{fontSize: size})
 }
 
 func makeNewTab(title string, entry *widget.Entry, tab *container.TabItem) *container.TabItem {
@@ -63,7 +63,10 @@ func makeNewTab(title string, entry *widget.Entry, tab *container.TabItem) *cont
 
 func addNewTab(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry) {
 	entry := widget.NewMultiLineEntry()
+	entry.TextStyle = fyne.TextStyle{Monospace: true}
+	entry.Wrapping = fyne.TextWrapWord // TODO
 	entry.SetPlaceHolder("Type here...")
+	
 	title := "Untitled " + strconv.Itoa(tabCount)
 	tabCount++
 
@@ -73,6 +76,15 @@ func addNewTab(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.En
 	tabs.Append(tab)
 	tabMap[tab] = entry
 	tabs.Select(tab)
+}
+
+func closeCurrentTab(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry) {
+	current := tabs.Selected()
+	if current == nil || len(tabs.Items) == 1 {
+		return // Don't close the last tab
+	}
+	tabs.Remove(current)
+	delete(tabMap, current)
 }
 
 func saveCurrentTab(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry, myWindow fyne.Window) {
@@ -150,7 +162,30 @@ func openFile(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Ent
 	fd.Show()
 }
 
-func registerShortcuts(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry, myWindow fyne.Window) {
+type customTheme struct {
+	fontSize float32
+}
+
+func (t *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return theme.DefaultTheme().Color(name, variant)
+}
+
+func (t *customTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return theme.DefaultTheme().Font(fyne.TextStyle{Monospace: true})
+}
+
+func (t *customTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return theme.DefaultTheme().Icon(name)
+}
+
+func (t *customTheme) Size(name fyne.ThemeSizeName) float32 {
+	if name == theme.SizeNameText {
+		return t.fontSize
+	}
+	return theme.DefaultTheme().Size(name)
+}
+
+func registerShortcuts(tabs *container.AppTabs, tabMap map[*container.TabItem]*widget.Entry, myWindow fyne.Window, myApp fyne.App) {
 	ctrlN := &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
 	myWindow.Canvas().AddShortcut(ctrlN, func(shotcut fyne.Shortcut) {
 		println("New Tab Shortcut Triggered")
@@ -177,7 +212,32 @@ func registerShortcuts(tabs *container.AppTabs, tabMap map[*container.TabItem]*w
 
 	ctrlO := &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
 	myWindow.Canvas().AddShortcut(ctrlO, func(shortcut fyne.Shortcut) {
-		println("Open File Shortcut Triggered")
+		println("Opening File Shortcut Triggered")
 		openFile(tabs, tabMap, myWindow)
+	})
+
+	ctrlZero := &desktop.CustomShortcut{KeyName: fyne.Key0, Modifier: fyne.KeyModifierControl}
+	myWindow.Canvas().AddShortcut(ctrlZero, func(shortcut fyne.Shortcut) {
+		println("Font Reset Shortcut Triggered")
+		fontSize = defaultFontSize
+		applyFontSize(myApp, fontSize)
+	})
+
+	ctrlPlus := &desktop.CustomShortcut{KeyName: fyne.KeyEqual, Modifier: fyne.KeyModifierControl}
+	myWindow.Canvas().AddShortcut(ctrlPlus, func(sc fyne.Shortcut) {
+		if fontSize < 30 {
+			fontSize += 2
+			println("Increased font size to", fontSize)
+			applyFontSize(myApp, fontSize)
+		}
+	})
+
+	ctrlMinus := &desktop.CustomShortcut{KeyName: fyne.KeyMinus, Modifier: fyne.KeyModifierControl}
+	myWindow.Canvas().AddShortcut(ctrlMinus, func(sc fyne.Shortcut) {
+		if fontSize > 8 {
+			fontSize -= 2
+			println("Decreased font size to", fontSize)
+			applyFontSize(myApp, fontSize)
+		}
 	})
 }
