@@ -1,2 +1,7 @@
+
+# all windows builds
 *.exe
+
+# default linux builds
 main
+m

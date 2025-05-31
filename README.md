@@ -5,13 +5,13 @@
 https://fyne.io/
 
 
-## Fedora 42 dependencies
+## Fedora 42 Dependencies
 ```
-# for Linux X11
+# Linux deps (X11)
 sudo dnf install libX11-devel libXrandr-devel libXcursor-devel libXinerama-devel libXi-devel libXxf86vm-devel libX11-devel
 sudo dnf install mesa-libGL-devel
 
-# for Windows
+# Windows deps
 sudo dnf install mingw64-gcc mingw64-crt mingw64-winpthreads mingw64-windows-default-manifest
 ```
 
@@ -22,11 +22,7 @@ sudo dnf install mingw64-gcc mingw64-crt mingw64-winpthreads mingw64-windows-def
 go build main.go
 
 # for Windows
-CGO_ENABLED=1 \
-GOOS=windows \
-GOARCH=amd64 \
-CC=x86_64-w64-mingw32-gcc \
-go build -o gopad.exe
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -o gopad.exe
 ```
 
 ## Packaging
