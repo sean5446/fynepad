@@ -26,12 +26,12 @@ CGO_ENABLED=1 \
 GOOS=windows \
 GOARCH=amd64 \
 CC=x86_64-w64-mingw32-gcc \
-go build -o main.exe main.go
+go build -o gopad.exe
 ```
 
 ## Packaging
 ```
 go install fyne.io/tools/cmd/fyne@latest
 export PATH=$PATH:$HOME/go/bin
-GOOS=windows CC=x86_64-w64-mingw32-gcc fyne package -os windows
+GOOS=windows CC=x86_64-w64-mingw32-gcc fyne package -os windows -name gopad.exe
 ```
