@@ -31,6 +31,6 @@ func (m customTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 	return theme.DefaultTheme().Icon(name)
 }
 
-func ApplyTheme(a fyne.App, size float32) {
+func applyTheme(a fyne.App, size float32) {
 	a.Settings().SetTheme(&customTheme{textSize: size})
 }

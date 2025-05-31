@@ -5,7 +5,7 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-func SetupMenu(myWindow fyne.Window, recentFiles []string) {
+func setupMenu(myWindow fyne.Window, recentFiles []string) {
 	fileMenuItems := []*fyne.MenuItem{
 		fyne.NewMenuItem("Open...", func() {
 			println("Open clicked")
