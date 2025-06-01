@@ -20,27 +20,24 @@ func (e *HotkeyEntry) TypedShortcut(shortcut fyne.Shortcut) {
 	}
 }
 
-func newHotkeyEntry(onShortcut func(fyne.Shortcut)) *HotkeyEntry {
-	e := &HotkeyEntry{onShortcut: onShortcut}
-	e.MultiLine = true
-	e.Text = "some text"
-	e.ExtendBaseWidget(e)
-	// e.Wrapping = fyne.TextWrapWord
-	return e
-}
-
-func newTab(tabs *container.AppTabs, fontLabel *widget.Label, a fyne.App) {
+func newTab(tabs *container.AppTabs, fontLabel *widget.Label, a fyne.App, tabTitle string, tabData string) {
 	var entry *HotkeyEntry
+	
+	tabName := "Untitled-" + strconv.Itoa(len(tabs.Items)+1)
+	if tabTitle != "" {
+		tabName = tabTitle
+	}
 
-	entry = newHotkeyEntry(func(shortcut fyne.Shortcut) {
+	entry = assignShortcutAndData(func(shortcut fyne.Shortcut) {
 		switch sc := shortcut.(type) {
 		case *desktop.CustomShortcut:
 			if sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+N
-				newTab(tabs, fontLabel, a)
+				newTab(tabs, fontLabel, a, tabName, "")
 			} else if sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+W
 				tabs.RemoveIndex(tabs.SelectedIndex())
+				tabsData = append(tabsData[:tabs.SelectedIndex()], tabsData[tabs.SelectedIndex()+1:]...)
 			} else if sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Minus
 				if fontSize > 6 {
@@ -69,12 +66,27 @@ func newTab(tabs *container.AppTabs, fontLabel *widget.Label, a fyne.App) {
 				a.Quit()
 			}
 		}
+	}, tabData)
+
+	// populate tabsData
+	tabsData = append(tabsData, TabData{
+		Title:    tabName,
+		FilePath: "", // Placeholder for file path
+		Content:  tabData,
 	})
 
 	applyTheme(a, fontSize)
 
-	tabName := "Untitled-" + strconv.Itoa(len(tabs.Items)+1)
 	tab := container.NewTabItem(tabName, container.NewStack(entry))
 	tabs.Append(tab)
 	tabs.Select(tab)
+}
+
+func assignShortcutAndData(onShortcut func(fyne.Shortcut), tabData string) *HotkeyEntry {
+	e := &HotkeyEntry{onShortcut: onShortcut}
+	e.MultiLine = true
+	e.Text = tabData
+	e.ExtendBaseWidget(e)
+	// e.Wrapping = fyne.TextWrapWord
+	return e
 }

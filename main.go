@@ -12,6 +12,7 @@ import (
 const defaultFontSize float32 = 14.0
 
 var fontSize float32 = defaultFontSize
+var tabsData []TabData
 
 func main() {
 	a := app.New()
@@ -21,6 +22,15 @@ func main() {
 	tabs := container.NewAppTabs()
 	fontLabel := widget.NewLabel(getLabelText())
 
+	// load session data
+	tabsData, _ = loadSessionData()
+	for _, d := range tabsData {
+		newTab(tabs, fontLabel, a, d.Title, d.Content)
+	}
+	if len(tabs.Items) == 0 {
+		newTab(tabs, fontLabel, a, "", "")
+	}
+
 	recentFiles := []string{
 		"/home/user/notes1.txt",
 		"/home/user/todo.md",
@@ -28,10 +38,14 @@ func main() {
 
 	setupMenu(w, recentFiles)
 
-	// Add initial tab
-	newTab(tabs, fontLabel, a)
-
+	// setup the window content
 	w.SetContent(container.NewBorder(nil, fontLabel, nil, nil, tabs))
+
+	// save session data on close
+	w.SetCloseIntercept(func() {
+		saveSessionData(tabsData)
+		a.Quit()
+	})
 
 	w.ShowAndRun()
 }
