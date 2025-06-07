@@ -18,12 +18,14 @@ type TabEntryWithShortcut struct {
 }
 
 func (e *TabEntryWithShortcut) TypedShortcut(shortcut fyne.Shortcut) {
+	// Handle shortcuts for the entry - allow default shortcuts like copy, paste, etc.
 	switch shortcut.(type) {
 	case *fyne.ShortcutCopy,
 		*fyne.ShortcutPaste,
 		*fyne.ShortcutCut,
 		*fyne.ShortcutSelectAll,
-		*fyne.ShortcutUndo:
+		*fyne.ShortcutUndo,
+		*fyne.ShortcutRedo:
 		e.Entry.TypedShortcut(shortcut)
 	default:
 		if e.onShortcut != nil {
@@ -52,6 +54,7 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 			} else if sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+W
 				tabs.RemoveIndex(tabs.SelectedIndex())
+				// TODO do something better here - this crashes
 				if len(tabsData) > 0 {
 					tabsData = append(tabsData[:tabs.SelectedIndex()], tabsData[tabs.SelectedIndex()+1:]...)
 				}
@@ -83,6 +86,7 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 				println("implement find")
 			} else if sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Q
+				saveSessionData(tabsData)
 				a.Quit()
 			}
 		}
@@ -96,26 +100,29 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 }
 
 func assignShortcutAndData(onShortcut func(fyne.Shortcut), labelStatus *widget.Label, tabTitle string, tabContent string) *TabEntryWithShortcut {
-	e := &TabEntryWithShortcut{onShortcut: onShortcut}
-	e.MultiLine = true
-	e.TextStyle = fyne.TextStyle{Monospace: true}
-	e.Text = tabContent
-	e.ExtendBaseWidget(e)
-	e.Title = tabTitle
+	entry := &TabEntryWithShortcut{onShortcut: onShortcut}
+	entry.MultiLine = true
+	entry.TextStyle = fyne.TextStyle{Monospace: true}
+	entry.Text = tabContent
+	entry.ExtendBaseWidget(entry)
+	entry.Title = tabTitle
 	// more properties can be set here
-	// e.Wrapping = fyne.TextWrapWord
-	e.OnChanged = func(s string) {
-		labelStatus.SetText(getLabelText(e))
+	entry.OnChanged = func(s string) {
+		labelStatus.SetText(getLabelText(entry))
 	}
-	e.OnCursorChanged = func() {
-		labelStatus.SetText(getLabelText(e))
+	entry.OnCursorChanged = func() {
+		labelStatus.SetText(getLabelText(entry))
 	}
-	return e
+	return entry
 }
 
 func getLabelText(entry *TabEntryWithShortcut) string {
-	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx",
-		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), fontSize)
+	wrap := "on"
+	if entry.Wrapping == fyne.TextWrapOff {
+		wrap = "off"
+	}
+	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
+		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), fontSize, wrap)
 }
 
 func toggleWrap(entry *TabEntryWithShortcut) {
