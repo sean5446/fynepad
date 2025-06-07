@@ -7,30 +7,27 @@ import (
 
 const sessionfile = "session.json"
 
-type TabData struct {
-	Title    string `json:"title"`
-	FilePath string `json:"file_path"`
-	Content  string `json:"content"`
-}
 
-func loadSessionData() ([]TabData, error) {
+func loadSessionData() ([]*TabEntryWithShortcut, error) {
 	file, err := os.Open(sessionfile)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	var tabs []TabData
 	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&tabs)
+	err = decoder.Decode(&tabsData)
 	if err != nil {
 		return nil, err
 	}
 
-	return tabs, nil
+	println("Loaded session data:", tabsData)
+	result := make([]*TabEntryWithShortcut, len(tabsData))
+	copy(result, tabsData)
+	return result, nil
 }
 
-func saveSessionData(tabs []TabData) error {
+func saveSessionData(tabsData []*TabEntryWithShortcut) error {
 	file, err := os.Create(sessionfile)
 	if err != nil {
 		return err
@@ -38,6 +35,8 @@ func saveSessionData(tabs []TabData) error {
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // Pretty print
-	return encoder.Encode(tabs)
+	encoder.SetIndent("", "  ")
+
+	println("Saving session:", tabsData)
+	return encoder.Encode(tabsData)
 }

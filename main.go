@@ -12,7 +12,7 @@ import (
 const defaultFontSize float32 = 14.0
 
 var fontSize float32 = defaultFontSize
-var tabsData []TabData
+var tabsData []*TabEntryWithShortcut
 
 func main() {
 	a := app.New()
@@ -25,17 +25,20 @@ func main() {
 	// load session data
 	tabsData, _ = loadSessionData()
 	for _, d := range tabsData {
-		newTab(tabs, fontLabel, a, d.Title, d.Content)
-	}
-	if len(tabs.Items) == 0 {
-		newTab(tabs, fontLabel, a, "", "")
+		newTab(tabs, fontLabel, a, d.Title, d.Text)
 	}
 
+	// if no session data found, create a new tab
+	if len(tabsData) == 0 {
+		tab := newTab(tabs, fontLabel, a, "", "")
+		tabsData = append(tabsData, tab)
+	}
+
+	// TODO implemenet last used files menu
 	recentFiles := []string{
 		"/home/user/notes1.txt",
 		"/home/user/todo.md",
 	}
-
 	setupMenu(w, recentFiles)
 
 	// setup the window content
@@ -43,6 +46,7 @@ func main() {
 
 	// save session data on close
 	w.SetCloseIntercept(func() {
+		println("Saving session data before closing ", tabsData)
 		saveSessionData(tabsData)
 		a.Quit()
 	})
@@ -50,7 +54,7 @@ func main() {
 	w.ShowAndRun()
 }
 
-func changeFontSize(a fyne.App, fontSize float32, entry *HotkeyEntry, fontLabel *widget.Label) {
+func changeFontSize(a fyne.App, fontSize float32, entry *TabEntryWithShortcut, fontLabel *widget.Label) {
 	entry.TextStyle = fyne.TextStyle{Monospace: true}
 	applyTheme(a, fontSize)
 	entry.Refresh()
