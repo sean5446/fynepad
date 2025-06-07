@@ -37,6 +37,12 @@ func saveSessionData(tabsData []*TabEntryWithShortcut) error {
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 
+	// update the text content of each tab
+	for _, tab := range tabsData {
+		println("Saving tab:", tab.Title, "with text:", tab.Entry.Text)
+		tab.Text = tab.Entry.Text
+	}
+
 	println("Saving session:", tabsData)
 	return encoder.Encode(tabsData)
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strconv"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -20,7 +18,7 @@ func main() {
 	w.Resize(fyne.NewSize(800, 600))
 
 	tabs := container.NewAppTabs()
-	fontLabel := widget.NewLabel(getLabelText())
+	fontLabel := widget.NewLabel("")
 
 	// load session data
 	tabsData, _ = loadSessionData()
@@ -58,9 +56,5 @@ func changeFontSize(a fyne.App, fontSize float32, entry *TabEntryWithShortcut, f
 	entry.TextStyle = fyne.TextStyle{Monospace: true}
 	applyTheme(a, fontSize)
 	entry.Refresh()
-	fontLabel.SetText(getLabelText())
-}
-
-func getLabelText() string {
-	return "Font Size: " + strconv.Itoa(int(fontSize))
+	fontLabel.SetText(getLabelText(entry))
 }
