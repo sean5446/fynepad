@@ -271,6 +271,8 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 		switch {
 		case sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl:
 			tm.NewTab("", "")
+		case sc.KeyName == fyne.KeyT && sc.Modifier == fyne.KeyModifierControl:
+			tm.NewTab("", "")
 		case sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl:
 			tm.closeCurrentTab()
 		case sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl:
@@ -294,6 +296,7 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 			tm.saveCurrentFile()
 		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
 			saveSession(tm.TabsData)
+			// TODO save recent files?
 			tm.App.Quit()
 		default:
 			fmt.Println("Unhandled shortcut:", sc)
