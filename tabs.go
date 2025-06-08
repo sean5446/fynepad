@@ -10,15 +10,18 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// -----------------------------
+// Structs
+// -----------------------------
+
 type TabEntryWithShortcut struct {
 	widget.Entry
-	onShortcut func(shortcut fyne.Shortcut)
 	Title      string
 	Filepath   string
+	onShortcut func(fyne.Shortcut)
 }
 
 func (e *TabEntryWithShortcut) TypedShortcut(shortcut fyne.Shortcut) {
-	// Handle shortcuts for the entry - allow default shortcuts like copy, paste, etc.
 	switch shortcut.(type) {
 	case *fyne.ShortcutCopy,
 		*fyne.ShortcutPaste,
@@ -34,100 +37,118 @@ func (e *TabEntryWithShortcut) TypedShortcut(shortcut fyne.Shortcut) {
 	}
 }
 
-func newTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut, labelStatus *widget.Label, a fyne.App, tabTitle string, tabContent string) *TabEntryWithShortcut {
-	if tabTitle == "" {
-		tabTitle = "Untitled-" + strconv.Itoa(len(tabsData)+1)
-	}
-
-	var entry *TabEntryWithShortcut
-	entry = assignShortcutAndData(func(shortcut fyne.Shortcut) {
-		switch sc := shortcut.(type) {
-		case *desktop.CustomShortcut:
-			if sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+N
-				tab := newTab(tabs, tabsData, labelStatus, a, "", "")
-				tabsData = append(tabsData, tab)
-			} else if sc.KeyName == fyne.KeyT && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+T
-				tab := newTab(tabs, tabsData, labelStatus, a, "", "")
-				tabsData = append(tabsData, tab)
-			} else if sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+W
-				closeCurrentTab(tabs, tabsData)
-			} else if sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+Minus
-				if currentFontSize > 8 {
-					currentFontSize -= 2
-				}
-				changeFontSize(a, currentFontSize, entry, labelStatus)
-			} else if sc.KeyName == fyne.KeyEqual && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+Plus
-				currentFontSize += 2
-				changeFontSize(a, currentFontSize, entry, labelStatus)
-			} else if sc.KeyName == fyne.Key0 && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+Zero
-				currentFontSize = defaultFontSize
-				changeFontSize(a, currentFontSize, entry, labelStatus)
-			} else if sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt {
-				// Alt+Z
-				toggleWrap(entry)
-			} else if sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+S
-				println("implement save")
-
-				printCurrentTabText(tabs, tabsData) // try to debug why saving does not save recent changes
-
-			} else if sc.KeyName == fyne.KeyO && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+O
-				println("implemenet open")
-			} else if sc.KeyName == fyne.KeyF && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+F
-				println("implement find")
-			} else if sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl {
-				// Ctrl+Q
-				saveSessionData(tabsData)
-				a.Quit()
-			}
-		}
-	}, labelStatus, tabTitle, tabContent)
-
-	applyTheme(a, currentFontSize)
-	tab := container.NewTabItem(tabTitle, container.NewStack(entry))
-	tabs.Append(tab)
-	tabs.Select(tab)
-	return entry
+type TabData struct {
+	Entry *TabEntryWithShortcut
+	Tab   *container.TabItem
 }
 
-func assignShortcutAndData(onShortcut func(fyne.Shortcut), labelStatus *widget.Label, tabTitle string, tabContent string) *TabEntryWithShortcut {
-	entry := &TabEntryWithShortcut{onShortcut: onShortcut}
-	entry.MultiLine = true
-	entry.TextStyle = fyne.TextStyle{Monospace: true}
-	entry.Text = tabContent
-	entry.Title = tabTitle
-	entry.CursorColumn = 0 // TODO
-	entry.CursorRow = 0    // TODO
-	// entry.Wrapping = // TODO
-	// TODO somehow set focus to the text
-	entry.OnChanged = func(s string) {
-		labelStatus.SetText(getLabelText(entry))
+type TabManager struct {
+	App         fyne.App
+	Tabs        *container.AppTabs
+	LabelStatus *widget.Label
+	TabsData    []*TabData
+	FontSize    float32
+	DefaultSize float32
+}
+
+func NewTabManager(app fyne.App, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
+	return &TabManager{
+		App:         app,
+		Tabs:        container.NewAppTabs(),
+		LabelStatus: labelStatus,
+		FontSize:    defaultFontSize,
+		DefaultSize: defaultFontSize,
 	}
-	entry.OnCursorChanged = func() {
-		labelStatus.SetText(getLabelText(entry))
+}
+
+// -----------------------------
+// Core Tab Creation
+// -----------------------------
+
+func (tm *TabManager) NewTab(title, content string) {
+	if title == "" {
+		title = "Untitled-" + strconv.Itoa(len(tm.TabsData)+1)
+	}
+
+	entry := tm.createEntry(title, content)
+	tab := container.NewTabItem(title, container.NewStack(entry))
+
+	tm.Tabs.Append(tab)
+	tm.Tabs.Select(tab)
+
+	tm.TabsData = append(tm.TabsData, &TabData{
+		Entry: entry,
+		Tab:   tab,
+	})
+
+	tm.applyFontSize(entry)
+}
+
+func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
+	entry := &TabEntryWithShortcut{
+		Title: title,
 	}
 	entry.ExtendBaseWidget(entry)
+
+	entry.MultiLine = true
+	entry.TextStyle = fyne.TextStyle{Monospace: true}
+	entry.Text = content
+
+	entry.OnChanged = func(s string) {
+		tm.LabelStatus.SetText(tm.getLabelText(entry))
+	}
+	entry.OnCursorChanged = func() {
+		tm.LabelStatus.SetText(tm.getLabelText(entry))
+	}
+
+	entry.onShortcut = func(shortcut fyne.Shortcut) {
+		tm.handleShortcut(entry, shortcut)
+	}
+
 	return entry
 }
 
-func getLabelText(entry *TabEntryWithShortcut) string {
-	wrap := "on"
-	if entry.Wrapping == fyne.TextWrapOff {
-		wrap = "off"
+// -----------------------------
+// Helper Methods
+// -----------------------------
+
+func (tm *TabManager) getCurrentTabIndex() (int, error) {
+	index := tm.Tabs.SelectedIndex()
+	if index < 0 || index >= len(tm.TabsData) {
+		return 0, fmt.Errorf("invalid tab index")
 	}
-	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
-		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), currentFontSize, wrap)
+	return index, nil
 }
 
-func toggleWrap(entry *TabEntryWithShortcut) {
+func (tm *TabManager) getCurrentEntry() (*TabEntryWithShortcut, error) {
+	index, err := tm.getCurrentTabIndex()
+	if err != nil {
+		return nil, err
+	}
+	return tm.TabsData[index].Entry, nil
+}
+
+func (tm *TabManager) CloseCurrentTab() {
+	index, err := tm.getCurrentTabIndex()
+	if err != nil {
+		fmt.Println("Error closing tab:", err)
+		return
+	}
+
+	tm.Tabs.RemoveIndex(index)
+	tm.TabsData = append(tm.TabsData[:index], tm.TabsData[index+1:]...)
+}
+
+func (tm *TabManager) PrintCurrentTabText() {
+	entry, err := tm.getCurrentEntry()
+	if err != nil {
+		fmt.Println("Error finding current tab:", err)
+		return
+	}
+	fmt.Println("Text:", entry.Text)
+}
+
+func (tm *TabManager) ToggleWrap(entry *TabEntryWithShortcut) {
 	if entry.Wrapping == fyne.TextWrapOff {
 		entry.Wrapping = fyne.TextWrapWord
 	} else {
@@ -136,30 +157,53 @@ func toggleWrap(entry *TabEntryWithShortcut) {
 	entry.Refresh()
 }
 
-func closeCurrentTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) {
-	index, err := findCurrentTab(tabs, tabsData)
-	if err != nil {
-		println("Error finding current tab:", err.Error())
-		return
-	}
-	tabs.RemoveIndex(index)
-	tabsData = append(tabsData[:index], tabsData[index+1:]...)
+func (tm *TabManager) applyFontSize(entry *TabEntryWithShortcut) {
+	changeFontSize(tm.App, tm.FontSize, entry)
+	tm.LabelStatus.SetText(tm.getLabelText(entry))
 }
 
-// print text of current tab
-func printCurrentTabText(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) {
-	index, err := findCurrentTab(tabs, tabsData)
-	if err != nil {
-		println("Error finding current tab:", err.Error())
-		return
+func (tm *TabManager) getLabelText(entry *TabEntryWithShortcut) string {
+	wrap := "on"
+	if entry.Wrapping == fyne.TextWrapOff {
+		wrap = "off"
 	}
-	println("Current tab text:", tabsData[index].Entry.Text)
+	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
+		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), tm.FontSize, wrap)
 }
 
-func findCurrentTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) (int, error) {
-	index := tabs.SelectedIndex()
-	if index < 0 || index >= len(tabsData) || index >= len(tabs.Items) {
-		return 0, fmt.Errorf("no current tab selected")
+// -----------------------------
+// Shortcut Handling
+// -----------------------------
+
+func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.Shortcut) {
+	switch sc := shortcut.(type) {
+	case *desktop.CustomShortcut:
+		switch {
+		case sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl:
+			tm.NewTab("", "")
+		case sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl:
+			tm.CloseCurrentTab()
+		case sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl:
+			if tm.FontSize > 8 {
+				tm.FontSize -= 2
+			}
+			tm.applyFontSize(entry)
+		case sc.KeyName == fyne.KeyEqual && sc.Modifier == fyne.KeyModifierControl:
+			tm.FontSize += 2
+			tm.applyFontSize(entry)
+		case sc.KeyName == fyne.Key0 && sc.Modifier == fyne.KeyModifierControl:
+			tm.FontSize = tm.DefaultSize
+			tm.applyFontSize(entry)
+		case sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt:
+			tm.ToggleWrap(entry)
+		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
+			fmt.Println("Save triggered")
+			tm.PrintCurrentTabText()
+		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
+			SaveSession(tm.TabsData)
+			tm.App.Quit()
+		default:
+			fmt.Println("Unhandled shortcut:", sc)
+		}
 	}
-	return index, nil
 }

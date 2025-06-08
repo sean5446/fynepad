@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -12,24 +10,25 @@ import (
 func main() {
 	a := app.New()
 	w := a.NewWindow("GoPad")
-	w.Resize(fyne.NewSize(800, 600))
+	labelStatus := widget.NewLabel("")
 
-	tabs := container.NewAppTabs()
-	fontLabel := widget.NewLabel("")
+	tabManager := NewTabManager(a, labelStatus, 14)
 
-	// load session data
-	tabsData, err := loadSessionData()
-	if err != nil {
-		log.Fatalf("Failed to load session data: %v", err)
-	}
-	for _, d := range tabsData {
-		newTab(tabs, tabsData, fontLabel, a, d.Title, d.Text)
-	}
-
-	// if no session data found, create a new tab
-	if len(tabsData) == 0 {
-		tab := newTab(tabs, tabsData, fontLabel, a, "", "")
-		tabsData = append(tabsData, tab)
+	// Load session if it exists
+	if savedTabs, err := LoadSession(); err == nil && len(savedTabs) > 0 {
+		for _, s := range savedTabs {
+			entry := tabManager.createEntry(s.Title, s.Text)
+			entry.Wrapping = s.Wrapping
+			entry.CursorRow = s.CursorRow
+			entry.CursorColumn = s.CursorColumn
+			entry.Filepath = s.Filepath
+			tab := container.NewTabItem(s.Title, container.NewStack(entry))
+			tabManager.Tabs.Append(tab)
+			tabManager.TabsData = append(tabManager.TabsData, &TabData{Entry: entry, Tab: tab})
+		}
+		tabManager.Tabs.SelectIndex(0)
+	} else {
+		tabManager.NewTab("", "") // default new tab
 	}
 
 	// TODO implemenet last used files menu
@@ -39,17 +38,14 @@ func main() {
 	}
 	setupMenu(w, recentFiles)
 
-	// setup the window content
-	w.SetContent(container.NewBorder(nil, fontLabel, nil, nil, tabs))
+	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.Tabs))
+	w.Resize(fyne.NewSize(800, 600))
 
-	// save session data on close
+	// Save session on close
 	w.SetCloseIntercept(func() {
-		println("Saving session data before closing ", tabsData)
-		saveSessionData(tabsData)
+		SaveSession(tabManager.TabsData)
 		a.Quit()
 	})
 
 	w.ShowAndRun()
 }
-
-
