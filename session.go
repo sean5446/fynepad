@@ -24,6 +24,7 @@ func loadSessionData() ([]*TabEntryWithShortcut, error) {
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
+	var tabsData []*TabEntryWithShortcut
 	err = decoder.Decode(&tabsData)
 	if err != nil {
 		return nil, err

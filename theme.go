@@ -5,7 +5,12 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
+
+const defaultFontSize float32 = 14.0
+
+var currentFontSize float32 = defaultFontSize
 
 type customTheme struct {
 	fyne.Theme
@@ -33,4 +38,11 @@ func (m customTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 
 func applyTheme(a fyne.App, size float32) {
 	a.Settings().SetTheme(&customTheme{textSize: size})
+}
+
+func changeFontSize(a fyne.App, fontSize float32, entry *TabEntryWithShortcut, fontLabel *widget.Label) {
+	entry.TextStyle = fyne.TextStyle{Monospace: true}
+	applyTheme(a, fontSize)
+	entry.Refresh()
+	fontLabel.SetText(getLabelText(entry))
 }

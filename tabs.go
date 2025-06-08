@@ -34,7 +34,7 @@ func (e *TabEntryWithShortcut) TypedShortcut(shortcut fyne.Shortcut) {
 	}
 }
 
-func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabTitle string, tabContent string) *TabEntryWithShortcut {
+func newTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut, labelStatus *widget.Label, a fyne.App, tabTitle string, tabContent string) *TabEntryWithShortcut {
 	if tabTitle == "" {
 		tabTitle = "Untitled-" + strconv.Itoa(len(tabsData)+1)
 	}
@@ -45,40 +45,38 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 		case *desktop.CustomShortcut:
 			if sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+N
-				tab := newTab(tabs, labelStatus, a, "", "")
+				tab := newTab(tabs, tabsData, labelStatus, a, "", "")
 				tabsData = append(tabsData, tab)
 			} else if sc.KeyName == fyne.KeyT && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+T
-				tab := newTab(tabs, labelStatus, a, "", "")
+				tab := newTab(tabs, tabsData, labelStatus, a, "", "")
 				tabsData = append(tabsData, tab)
 			} else if sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+W
-				index := tabs.SelectedIndex()
-				if index < 0 || index >= len(tabsData) || index >= len(tabs.Items) {
-					return
-				}
-				tabs.RemoveIndex(index)
-				tabsData = append(tabsData[:index], tabsData[index+1:]...)
+				closeCurrentTab(tabs, tabsData)
 			} else if sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Minus
-				if fontSize > 8 {
-					fontSize -= 2
+				if currentFontSize > 8 {
+					currentFontSize -= 2
 				}
-				changeFontSize(a, fontSize, entry, labelStatus)
+				changeFontSize(a, currentFontSize, entry, labelStatus)
 			} else if sc.KeyName == fyne.KeyEqual && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Plus
-				fontSize += 2
-				changeFontSize(a, fontSize, entry, labelStatus)
+				currentFontSize += 2
+				changeFontSize(a, currentFontSize, entry, labelStatus)
 			} else if sc.KeyName == fyne.Key0 && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Zero
-				fontSize = defaultFontSize
-				changeFontSize(a, fontSize, entry, labelStatus)
+				currentFontSize = defaultFontSize
+				changeFontSize(a, currentFontSize, entry, labelStatus)
 			} else if sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt {
 				// Alt+Z
 				toggleWrap(entry)
 			} else if sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+S
 				println("implement save")
+
+				printCurrentTabText(tabs, tabsData) // try to debug why saving does not save recent changes
+
 			} else if sc.KeyName == fyne.KeyO && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+O
 				println("implemenet open")
@@ -93,7 +91,7 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 		}
 	}, labelStatus, tabTitle, tabContent)
 
-	applyTheme(a, fontSize)
+	applyTheme(a, currentFontSize)
 	tab := container.NewTabItem(tabTitle, container.NewStack(entry))
 	tabs.Append(tab)
 	tabs.Select(tab)
@@ -109,7 +107,7 @@ func assignShortcutAndData(onShortcut func(fyne.Shortcut), labelStatus *widget.L
 	entry.CursorColumn = 0 // TODO
 	entry.CursorRow = 0    // TODO
 	// entry.Wrapping = // TODO
-	// TODO somehow set focus to the text 
+	// TODO somehow set focus to the text
 	entry.OnChanged = func(s string) {
 		labelStatus.SetText(getLabelText(entry))
 	}
@@ -126,7 +124,7 @@ func getLabelText(entry *TabEntryWithShortcut) string {
 		wrap = "off"
 	}
 	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
-		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), fontSize, wrap)
+		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), currentFontSize, wrap)
 }
 
 func toggleWrap(entry *TabEntryWithShortcut) {
@@ -136,4 +134,36 @@ func toggleWrap(entry *TabEntryWithShortcut) {
 		entry.Wrapping = fyne.TextWrapOff
 	}
 	entry.Refresh()
+}
+
+func closeCurrentTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) {
+	index, err := findCurrentTab(tabs, tabsData)
+	if err != nil {
+		println("Error finding current tab:", err.Error())
+		return
+	}
+	tabs.RemoveIndex(index)
+	tabsData = append(tabsData[:index], tabsData[index+1:]...)
+}
+
+// print text of current tab
+func printCurrentTabText(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) {
+	index, err := findCurrentTab(tabs, tabsData)
+	if err != nil {
+		println("Error finding current tab:", err.Error())
+		return
+	}
+	if index < 0 || index >= len(tabsData) {
+		println("No current tab selected")
+		return
+	}
+	println("Current tab text:", tabsData[index].Entry.Text)
+}
+
+func findCurrentTab(tabs *container.AppTabs, tabsData []*TabEntryWithShortcut) (int, error) {
+	index := tabs.SelectedIndex()
+	if index < 0 || index >= len(tabsData) || index >= len(tabs.Items) {
+		return 0, fmt.Errorf("no current tab selected")
+	}
+	return index, nil
 }
