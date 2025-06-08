@@ -7,6 +7,14 @@ import (
 
 const sessionfile = "session.json"
 
+type TabSessionData struct {
+	Text         string `json:"Text"`
+	Wrapping     int    `json:"Wrapping"`
+	CursorRow    int    `json:"CursorRow"`
+	CursorColumn int    `json:"CursorColumn"`
+	Title        string `json:"Title"`
+	Filepath     string `json:"Filepath"`
+}
 
 func loadSessionData() ([]*TabEntryWithShortcut, error) {
 	file, err := os.Open(sessionfile)
@@ -27,22 +35,19 @@ func loadSessionData() ([]*TabEntryWithShortcut, error) {
 	return result, nil
 }
 
-func saveSessionData(tabsData []*TabEntryWithShortcut) error {
-	file, err := os.Create(sessionfile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-
-	// update the text content of each tab
-	for _, tab := range tabsData {
-		println("Saving tab:", tab.Title, "with text:", tab.Entry.Text)
-		tab.Text = tab.Entry.Text
+func saveSessionData(tabsData []*TabEntryWithShortcut) {
+	var session []TabSessionData
+	for _, entry := range tabsData {
+		session = append(session, TabSessionData{
+			Text:         entry.Text,
+			Wrapping:     int(entry.Wrapping),
+			CursorRow:    entry.CursorRow,
+			CursorColumn: entry.CursorColumn,
+			Title:        entry.Title,
+			Filepath:     entry.Filepath,
+		})
 	}
 
-	println("Saving session:", tabsData)
-	return encoder.Encode(tabsData)
+	data, _ := json.MarshalIndent(session, "", "  ")
+	os.WriteFile("session.json", data, 0644)
 }

@@ -53,11 +53,12 @@ func newTab(tabs *container.AppTabs, labelStatus *widget.Label, a fyne.App, tabT
 				tabsData = append(tabsData, tab)
 			} else if sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+W
-				tabs.RemoveIndex(tabs.SelectedIndex())
-				// TODO do something better here - this crashes
-				if len(tabsData) > 0 {
-					tabsData = append(tabsData[:tabs.SelectedIndex()], tabsData[tabs.SelectedIndex()+1:]...)
+				index := tabs.SelectedIndex()
+				if index < 0 || index >= len(tabsData) || index >= len(tabs.Items) {
+					return
 				}
+				tabs.RemoveIndex(index)
+				tabsData = append(tabsData[:index], tabsData[index+1:]...)
 			} else if sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl {
 				// Ctrl+Minus
 				if fontSize > 8 {
@@ -104,15 +105,18 @@ func assignShortcutAndData(onShortcut func(fyne.Shortcut), labelStatus *widget.L
 	entry.MultiLine = true
 	entry.TextStyle = fyne.TextStyle{Monospace: true}
 	entry.Text = tabContent
-	entry.ExtendBaseWidget(entry)
 	entry.Title = tabTitle
-	// more properties can be set here
+	entry.CursorColumn = 0 // TODO
+	entry.CursorRow = 0    // TODO
+	// entry.Wrapping = // TODO
+	// TODO somehow set focus to the text 
 	entry.OnChanged = func(s string) {
 		labelStatus.SetText(getLabelText(entry))
 	}
 	entry.OnCursorChanged = func() {
 		labelStatus.SetText(getLabelText(entry))
 	}
+	entry.ExtendBaseWidget(entry)
 	return entry
 }
 
