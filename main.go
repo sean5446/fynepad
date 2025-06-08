@@ -12,7 +12,7 @@ func main() {
 	w := a.NewWindow("GoPad")
 	labelStatus := widget.NewLabel("")
 
-	tabManager := NewTabManager(a, labelStatus, 14)
+	tabManager := newTabManager(a, labelStatus, 14)
 
 	menuManager := newMenuManager(w, tabManager)
 

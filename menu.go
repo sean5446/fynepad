@@ -114,7 +114,7 @@ func (m *menuManager) saveRecentFiles() {
 		fmt.Println("Failed to save recent files:", err)
 		return
 	}
-	_ = os.WriteFile(recentFilePath, data, 0644)
+	_ = os.WriteFile(recentFilePath, data, 0644) // todo use writeFIleContent?
 }
 
 func (m *menuManager) loadRecentFiles() {

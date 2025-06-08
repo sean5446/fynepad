@@ -22,7 +22,7 @@ sudo dnf install mingw64-gcc mingw64-crt mingw64-winpthreads mingw64-windows-def
 ## Compilation
 ```
 # for linux
-go build main.go
+go build -o gopad
 
 # for Windows
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -o gopad.exe

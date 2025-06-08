@@ -54,7 +54,7 @@ type TabManager struct {
 	DefaultSize float32
 }
 
-func NewTabManager(app fyne.App, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
+func newTabManager(app fyne.App, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
 	return &TabManager{
 		App:         app,
 		Tabs:        container.NewAppTabs(),
