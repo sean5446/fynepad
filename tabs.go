@@ -153,10 +153,6 @@ func printCurrentTabText(tabs *container.AppTabs, tabsData []*TabEntryWithShortc
 		println("Error finding current tab:", err.Error())
 		return
 	}
-	if index < 0 || index >= len(tabsData) {
-		println("No current tab selected")
-		return
-	}
 	println("Current tab text:", tabsData[index].Entry.Text)
 }
 
