@@ -20,7 +20,7 @@ type SessionEntry struct {
 const sessionFile = "session.json"
 
 // SaveSession stores the session data to disk.
-func SaveSession(entries []*TabData) error {
+func saveSession(entries []*TabData) error {
 	var session []SessionEntry
 	for _, data := range entries {
 		entry := data.Entry
@@ -43,7 +43,7 @@ func SaveSession(entries []*TabData) error {
 }
 
 // LoadSession reads the saved tabs from disk.
-func LoadSession() ([]SessionEntry, error) {
+func loadSession() ([]SessionEntry, error) {
 	if _, err := os.Stat(sessionFile); os.IsNotExist(err) {
 		return nil, nil // No session file = clean start
 	}
@@ -61,7 +61,7 @@ func LoadSession() ([]SessionEntry, error) {
 	// If Filepath is set, try to read real content
 	for i, tab := range session {
 		if tab.Filepath != "" {
-			content, err := ReadFileContent(tab.Filepath)
+			content, err := readFileContent(tab.Filepath)
 			if err == nil {
 				session[i].Text = content
 			} else {

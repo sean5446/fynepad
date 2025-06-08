@@ -131,7 +131,7 @@ func (tm *TabManager) getCurrentEntry() (*TabEntryWithShortcut, error) {
 	return tm.TabsData[index].Entry, nil
 }
 
-func (tm *TabManager) CloseCurrentTab() {
+func (tm *TabManager) closeCurrentTab() {
 	index, err := tm.getCurrentTabIndex()
 	if err != nil {
 		fmt.Println("Error closing tab:", err)
@@ -142,7 +142,7 @@ func (tm *TabManager) CloseCurrentTab() {
 	tm.TabsData = append(tm.TabsData[:index], tm.TabsData[index+1:]...)
 }
 
-func (tm *TabManager) PrintCurrentTabText() {
+func (tm *TabManager) printCurrentTabText() {
 	entry, err := tm.getCurrentEntry()
 	if err != nil {
 		fmt.Println("Error finding current tab:", err)
@@ -151,7 +151,7 @@ func (tm *TabManager) PrintCurrentTabText() {
 	fmt.Println(entry.Text)
 }
 
-func (tm *TabManager) ToggleWrap(entry *TabEntryWithShortcut) {
+func (tm *TabManager) toggleWrap(entry *TabEntryWithShortcut) {
 	if entry.Wrapping == fyne.TextWrapOff {
 		entry.Wrapping = fyne.TextWrapWord
 	} else {
@@ -204,6 +204,19 @@ func (tm *TabManager) showOpenFileDialog() {
 	openDialog.Show()
 }
 
+func (tm *TabManager) showOpenFileDialogWithCallback(callback func(path string)) {
+	dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil || reader == nil {
+			return
+		}
+		defer reader.Close()
+
+		if callback != nil {
+			callback(reader.URI().Path())
+		}
+	}, tm.App.Driver().AllWindows()[0]).Show()
+}
+
 func (tm *TabManager) saveCurrentFile() {
 	entry, err := tm.getCurrentEntry()
 	if err != nil {
@@ -211,7 +224,7 @@ func (tm *TabManager) saveCurrentFile() {
 	}
 
 	if entry.Filepath != "" {
-		err := WriteFileContent(entry.Filepath, entry.Text)
+		err := writeFileContent(entry.Filepath, entry.Text)
 		if err != nil {
 			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
 		}
@@ -259,7 +272,7 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 		case sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl:
 			tm.NewTab("", "")
 		case sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl:
-			tm.CloseCurrentTab()
+			tm.closeCurrentTab()
 		case sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl:
 			if tm.FontSize > 8 {
 				tm.FontSize -= 2
@@ -272,15 +285,15 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 			tm.FontSize = tm.DefaultSize
 			tm.applyFontSize(entry)
 		case sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt:
-			tm.ToggleWrap(entry)
+			tm.toggleWrap(entry)
 		case sc.KeyName == fyne.KeyD && sc.Modifier == fyne.KeyModifierControl:
-			tm.PrintCurrentTabText()
+			tm.printCurrentTabText()
 		case sc.KeyName == fyne.KeyO && sc.Modifier == fyne.KeyModifierControl:
 			tm.showOpenFileDialog()
 		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
 			tm.saveCurrentFile()
 		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
-			SaveSession(tm.TabsData)
+			saveSession(tm.TabsData)
 			tm.App.Quit()
 		default:
 			fmt.Println("Unhandled shortcut:", sc)

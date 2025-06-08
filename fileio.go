@@ -5,7 +5,7 @@ import (
 )
 
 // ReadFileContent returns the contents of a file as a string.
-func ReadFileContent(path string) (string, error) {
+func readFileContent(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -14,6 +14,6 @@ func ReadFileContent(path string) (string, error) {
 }
 
 // WriteFileContent writes the string data to the specified file path.
-func WriteFileContent(path, content string) error {
+func writeFileContent(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0644)
 }

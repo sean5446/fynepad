@@ -8,14 +8,16 @@ import (
 )
 
 func main() {
-	a := app.New()
+	a := app.NewWithID("com.queso.mytexteditor")
 	w := a.NewWindow("GoPad")
 	labelStatus := widget.NewLabel("")
 
 	tabManager := NewTabManager(a, labelStatus, 14)
 
+	menuManager := newMenuManager(w, tabManager)
+
 	// Load session if it exists
-	if savedTabs, err := LoadSession(); err == nil && len(savedTabs) > 0 {
+	if savedTabs, err := loadSession(); err == nil && len(savedTabs) > 0 {
 		for _, s := range savedTabs {
 			entry := tabManager.createEntry(s.Title, s.Text)
 			entry.Wrapping = s.Wrapping
@@ -36,7 +38,8 @@ func main() {
 
 	// Save session on close
 	w.SetCloseIntercept(func() {
-		SaveSession(tabManager.TabsData)
+		saveSession(tabManager.TabsData)
+		menuManager.saveRecentFiles()
 		a.Quit()
 	})
 
