@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -145,7 +148,7 @@ func (tm *TabManager) PrintCurrentTabText() {
 		fmt.Println("Error finding current tab:", err)
 		return
 	}
-	fmt.Println("Text:", entry.Text)
+	fmt.Println(entry.Text)
 }
 
 func (tm *TabManager) ToggleWrap(entry *TabEntryWithShortcut) {
@@ -169,6 +172,80 @@ func (tm *TabManager) getLabelText(entry *TabEntryWithShortcut) string {
 	}
 	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
 		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), tm.FontSize, wrap)
+}
+
+func (tm *TabManager) showOpenFileDialog() {
+	openDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil || reader == nil {
+			return
+		}
+		defer reader.Close()
+
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+			return
+		}
+
+		// Create new tab
+		entry := tm.createEntry(reader.URI().Name(), string(data))
+		entry.Filepath = reader.URI().Path()
+		tab := container.NewTabItem(entry.Title, container.NewStack(entry))
+
+		tm.Tabs.Append(tab)
+		tm.Tabs.Select(tab)
+		tm.TabsData = append(tm.TabsData, &TabData{
+			Entry: entry,
+			Tab:   tab,
+		})
+	}, tm.App.Driver().AllWindows()[0])
+
+	openDialog.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".md", ""}))
+	openDialog.Show()
+}
+
+func (tm *TabManager) saveCurrentFile() {
+	entry, err := tm.getCurrentEntry()
+	if err != nil {
+		return
+	}
+
+	if entry.Filepath != "" {
+		err := WriteFileContent(entry.Filepath, entry.Text)
+		if err != nil {
+			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+		}
+		return
+	}
+
+	// Fallback: show Save As
+	tm.showSaveFileDialog(entry)
+}
+
+func (tm *TabManager) showSaveFileDialog(entry *TabEntryWithShortcut) {
+	saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil || writer == nil {
+			return
+		}
+		defer writer.Close()
+
+		_, err = writer.Write([]byte(entry.Text))
+		if err != nil {
+			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+			return
+		}
+
+		entry.Filepath = writer.URI().Path()
+		entry.Title = writer.URI().Name()
+
+		// Update tab title
+		index, _ := tm.getCurrentTabIndex()
+		tm.Tabs.Items[index].Text = entry.Title
+		tm.Tabs.Refresh()
+	}, tm.App.Driver().AllWindows()[0])
+
+	saveDialog.SetFileName(entry.Title + ".txt")
+	saveDialog.Show()
 }
 
 // -----------------------------
@@ -196,9 +273,12 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 			tm.applyFontSize(entry)
 		case sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt:
 			tm.ToggleWrap(entry)
-		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
-			fmt.Println("Save triggered")
+		case sc.KeyName == fyne.KeyD && sc.Modifier == fyne.KeyModifierControl:
 			tm.PrintCurrentTabText()
+		case sc.KeyName == fyne.KeyO && sc.Modifier == fyne.KeyModifierControl:
+			tm.showOpenFileDialog()
+		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
+			tm.saveCurrentFile()
 		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
 			SaveSession(tm.TabsData)
 			tm.App.Quit()

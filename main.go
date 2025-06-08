@@ -31,13 +31,6 @@ func main() {
 		tabManager.NewTab("", "") // default new tab
 	}
 
-	// TODO implemenet last used files menu
-	recentFiles := []string{
-		"/home/user/notes1.txt",
-		"/home/user/todo.md",
-	}
-	setupMenu(w, recentFiles)
-
 	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.Tabs))
 	w.Resize(fyne.NewSize(800, 600))
 

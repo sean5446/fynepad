@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"fyne.io/fyne/v2"
@@ -55,6 +56,18 @@ func LoadSession() ([]SessionEntry, error) {
 	var session []SessionEntry
 	if err := json.Unmarshal(bytes, &session); err != nil {
 		return nil, err
+	}
+
+	// If Filepath is set, try to read real content
+	for i, tab := range session {
+		if tab.Filepath != "" {
+			content, err := ReadFileContent(tab.Filepath)
+			if err == nil {
+				session[i].Text = content
+			} else {
+				fmt.Println("Warning: Could not open file from session:", err)
+			}
+		}
 	}
 
 	return session, nil
