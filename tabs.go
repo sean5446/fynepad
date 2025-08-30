@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -57,21 +58,34 @@ type TabManager struct {
 }
 
 func newTabManager(app fyne.App, w fyne.Window, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
-	return &TabManager{
+	tabs := container.NewAppTabs()
+
+	tm := &TabManager{
 		app:         app,
 		window:      w,
-		tabs:        container.NewAppTabs(),
+		tabs:        tabs,
 		labelStatus: labelStatus,
 		fontSize:    defaultFontSize,
 		defaultSize: defaultFontSize,
 	}
+
+	tabs.OnSelected = func(tab *container.TabItem) {
+		for _, data := range tm.tabsData {
+			if data.tab == tab {
+				tm.focusEntry(data.entry)
+				break
+			}
+		}
+	}
+
+	return tm
 }
 
 // -----------------------------
 // Core Tab Creation
 // -----------------------------
 
-func (tm *TabManager) newTab(title, content string) {
+func (tm *TabManager) newTab(title, content string) *TabEntryWithShortcut {
 	if title == "" {
 		title = "Untitled-" + strconv.Itoa(len(tm.tabsData)+1)
 	}
@@ -85,6 +99,8 @@ func (tm *TabManager) newTab(title, content string) {
 	tm.tabsData = append(tm.tabsData, &TabData{entry, tab})
 
 	tm.applyFontSize(entry)
+	tm.focusEntry(entry)
+	return entry
 }
 
 func (tm *TabManager) newTabs(savedTabs []TabDetail, selectedIndex int) {
@@ -103,7 +119,10 @@ func (tm *TabManager) newTabs(savedTabs []TabDetail, selectedIndex int) {
 		tm.newTab("", "") // default new tab
 	}
 
-	tm.tabs.SelectIndex(selectedIndex)
+	if selectedIndex >= 0 && selectedIndex < len(tm.tabsData) {
+		tm.tabs.SelectIndex(selectedIndex)
+		tm.focusEntry(tm.tabsData[selectedIndex].entry)
+	}
 }
 
 func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
@@ -207,17 +226,9 @@ func (tm *TabManager) showOpenFileDialog() {
 			return
 		}
 
-		// Create new tab
-		entry := tm.createEntry(reader.URI().Name(), string(data))
+		entry := tm.newTab(reader.URI().Name(), string(data))
 		entry.filePath = reader.URI().Path()
-		tab := container.NewTabItem(entry.title, container.NewStack(entry))
 
-		tm.tabs.Append(tab)
-		tm.tabs.Select(tab)
-		tm.tabsData = append(tm.tabsData, &TabData{
-			entry: entry,
-			tab:   tab,
-		})
 	}, tm.app.Driver().AllWindows()[0])
 
 	openDialog.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".md", ""}))
@@ -308,4 +319,17 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 			fmt.Println("Unhandled shortcut:", sc)
 		}
 	}
+}
+
+func (tm *TabManager) focusEntry(entry *TabEntryWithShortcut) {
+	// if this is called immediately after creating the entry, it may not focus correctly
+	// https://github.com/fyne-io/fyne/wiki/Threading-migration
+	time.AfterFunc(50*time.Millisecond, func() {
+		fyne.Do(func() {
+			canvas := tm.window.Canvas()
+			if canvas != nil {
+				canvas.Focus(entry)
+			}
+		})
+	})
 }
