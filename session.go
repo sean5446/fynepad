@@ -89,14 +89,18 @@ func loadSession() ([]TabDetail, WindowState, []string, error) {
 	}
 
 	// refill Text content if file paths exist
-	for i, tab := range sessionData.TabDetail {
+	tabDetails := make([]TabDetail, 0, len(sessionData.TabDetail))
+	for _, tab := range sessionData.TabDetail {
 		if tab.FilePath != "" {
 			content, err := readFileContent(tab.FilePath)
 			if err == nil {
-				sessionData.TabDetail[i].Text = content
+				tab.Text = content
+				tabDetails = append(tabDetails, tab)
 			}
+		} else {
+			tabDetails = append(tabDetails, tab)
 		}
 	}
 
-	return sessionData.TabDetail, sessionData.WindowState, sessionData.RecentFiles, nil
+	return tabDetails, sessionData.WindowState, sessionData.RecentFiles, nil
 }

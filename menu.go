@@ -116,12 +116,12 @@ func (m *MenuManager) openedFileCallback(path string) {
 }
 
 func (m *MenuManager) addRecentFile(path string) {
-	// Remove duplicate if exists
+	// remove duplicate if exists
 	m.recentFiles = slices.DeleteFunc(m.recentFiles, func(p string) bool {
 		return p == path
 	})
 
-	// Prepend
+	// prepend
 	m.recentFiles = append([]string{path}, m.recentFiles...)
 	if len(m.recentFiles) > 10 {
 		m.recentFiles = m.recentFiles[:10]
@@ -132,7 +132,7 @@ func (m *MenuManager) addRecentFile(path string) {
 func (m *MenuManager) loadRecentFiles(recentFiles []string) {
 	m.recentFiles = recentFiles
 
-	// Filter non-existing files
+	// filter non-existing files
 	m.recentFiles = slices.DeleteFunc(m.recentFiles, func(path string) bool {
 		_, err := readFileContent(path)
 		return err != nil

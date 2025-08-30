@@ -8,22 +8,22 @@ import (
 )
 
 func main() {
-	a := app.NewWithID("com.queso.gopad")
-	w := a.NewWindow("GoPad")
+	app := app.NewWithID("com.queso.gopad")
+	window := app.NewWindow("GoPad")
 	labelStatus := widget.NewLabel("")
 
-	tabManager := newTabManager(a, w, labelStatus, 14)
-	menuManager := newMenuManager(a, w, []string{})
+	tabManager := newTabManager(app, window, labelStatus, 14)
+	menuManager := newMenuManager(app, window, []string{})
 
 	tabManager.menuManager = menuManager
 	menuManager.tabManager = tabManager
 
 	windowState := defaultWindowState
 
-	// Load session if it exists
+	// load session if it exists
 	if savedTabs, savedWindowState, recentFiles, err := loadSession(); err == nil {
 		windowState = savedWindowState
-		menuManager = newMenuManager(a, w, recentFiles)
+		menuManager = newMenuManager(app, window, recentFiles)
 
 		menuManager.tabManager = tabManager
 		tabManager.menuManager = menuManager
@@ -33,14 +33,12 @@ func main() {
 		tabManager.newTab("", "") // default new tab
 	}
 
-	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.tabs))
-	w.Resize(fyne.NewSize(windowState.Width, windowState.Height))
-
-	// Save session on close
-	w.SetCloseIntercept(func() {
-		saveSession(tabManager, menuManager, w)
-		a.Quit()
+	window.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.tabs))
+	window.Resize(fyne.NewSize(windowState.Width, windowState.Height))
+	window.SetCloseIntercept(func() {
+		saveSession(tabManager, menuManager, window)
+		app.Quit()
 	})
 
-	w.ShowAndRun()
+	window.ShowAndRun()
 }

@@ -14,10 +14,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// -----------------------------
-// Structs
-// -----------------------------
-
 type TabEntryWithShortcut struct {
 	widget.Entry
 	title      string
@@ -80,10 +76,6 @@ func newTabManager(app fyne.App, w fyne.Window, labelStatus *widget.Label, defau
 
 	return tm
 }
-
-// -----------------------------
-// Core Tab Creation
-// -----------------------------
 
 func (tm *TabManager) newTab(title, content string) *TabEntryWithShortcut {
 	if title == "" {
@@ -149,10 +141,6 @@ func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 
 	return entry
 }
-
-// -----------------------------
-// Helper Methods
-// -----------------------------
 
 func (tm *TabManager) getCurrentTabIndex() (int, error) {
 	index := tm.tabs.SelectedIndex()
@@ -294,10 +282,6 @@ func (tm *TabManager) showSaveFileDialog(entry *TabEntryWithShortcut) {
 	saveDialog.SetFileName(entry.title + ".txt")
 	saveDialog.Show()
 }
-
-// -----------------------------
-// Shortcut Handling
-// -----------------------------
 
 func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.Shortcut) {
 	switch sc := shortcut.(type) {
