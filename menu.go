@@ -9,31 +9,31 @@ import (
 	"fyne.io/fyne/v2/dialog"
 )
 
-
 type MenuManager struct {
+	app         fyne.App
 	window      fyne.Window
-	tabManager  *TabManager
 	recentFiles []string
+	tabManager  *TabManager
 }
 
-func newMenuManager(w fyne.Window, tm *TabManager, rf []string) *MenuManager {
+func newMenuManager(a fyne.App, w fyne.Window, rf []string) *MenuManager {
 	m := &MenuManager{
-		window:     w,
-		tabManager: tm,
+		app:         a,
+		window:      w,
 		recentFiles: rf,
 	}
-	m.loadRecentFiles()
+	m.loadRecentFiles(rf)
 	m.buildMenu()
 	return m
 }
 
 func (m *MenuManager) buildMenu() {
 	openItem := fyne.NewMenuItem("Open...", func() {
-		m.tabManager.showOpenFileDialogWithCallback(m.openedFileCallback)
+		m.showOpenFileDialogWithCallback(m.openedFileCallback)
 	})
 
 	quitItem := fyne.NewMenuItem("Quit", func() {
-		_ = saveSession(m.tabManager.TabsData, m.recentFiles, WindowState(m.window.Canvas().Size()))
+		saveSession(m.tabManager, m, m.window)
 		m.window.Close()
 	})
 
@@ -61,6 +61,19 @@ func (m *MenuManager) buildMenu() {
 	m.window.SetMainMenu(mainMenu)
 }
 
+func (m *MenuManager) showOpenFileDialogWithCallback(callback func(path string)) {
+	dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil || reader == nil {
+			return
+		}
+		defer reader.Close()
+
+		if callback != nil {
+			callback(reader.URI().Path())
+		}
+	}, m.app.Driver().AllWindows()[0]).Show()
+}
+
 func (m *MenuManager) generateRecentMenuItems() []*fyne.MenuItem {
 	items := make([]*fyne.MenuItem, 0, len(m.recentFiles))
 	for _, path := range m.recentFiles {
@@ -80,12 +93,12 @@ func (m *MenuManager) openedFileCallback(path string) {
 	}
 
 	entry := m.tabManager.createEntry(filepath.Base(path), content)
-	entry.Filepath = path
-	tab := container.NewTabItem(entry.Title, container.NewStack(entry))
+	entry.filePath = path
+	tab := container.NewTabItem(entry.title, container.NewStack(entry))
 
-	m.tabManager.Tabs.Append(tab)
-	m.tabManager.Tabs.Select(tab)
-	m.tabManager.TabsData = append(m.tabManager.TabsData, &TabData{Entry: entry, Tab: tab})
+	m.tabManager.tabs.Append(tab)
+	m.tabManager.tabs.Select(tab)
+	m.tabManager.tabsData = append(m.tabManager.tabsData, &TabData{entry: entry, tab: tab})
 
 	m.addRecentFile(path)
 }
@@ -104,12 +117,7 @@ func (m *MenuManager) addRecentFile(path string) {
 	m.buildMenu() // refresh menu
 }
 
-func (m *MenuManager) loadRecentFiles() {
-	_, _, recentFiles, err := loadSession()
-	if err != nil {
-		return
-	}
-
+func (m *MenuManager) loadRecentFiles(recentFiles []string) {
 	m.recentFiles = recentFiles
 
 	// Filter non-existing files

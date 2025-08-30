@@ -13,24 +13,32 @@ func main() {
 	labelStatus := widget.NewLabel("")
 
 	tabManager := newTabManager(a, w, labelStatus, 14)
-	menuManager := newMenuManager(w, tabManager, []string{})
+	menuManager := newMenuManager(a, w, []string{})
+
+	tabManager.menuManager = menuManager
+	menuManager.tabManager = tabManager
+
 	windowState := defaultWindowState
 
 	// Load session if it exists
-	if savedTabs, savedWindowState, recentFiles, err := loadSession(); err == nil && len(savedTabs) > 0 {
+	if savedTabs, savedWindowState, recentFiles, err := loadSession(); err == nil {
 		windowState = savedWindowState
-		menuManager = newMenuManager(w, tabManager, recentFiles)
-		tabManager.newTabs(savedTabs)
+		menuManager = newMenuManager(a, w, recentFiles)
+
+		menuManager.tabManager = tabManager
+		tabManager.menuManager = menuManager
+
+		tabManager.newTabs(savedTabs, savedWindowState.TabSelected)
 	} else {
 		tabManager.newTab("", "") // default new tab
 	}
 
-	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.Tabs))
+	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.tabs))
 	w.Resize(fyne.NewSize(windowState.Width, windowState.Height))
 
 	// Save session on close
 	w.SetCloseIntercept(func() {
-		saveSession(tabManager.TabsData, menuManager.recentFiles, WindowState(w.Canvas().Size()))
+		saveSession(tabManager, menuManager, w)
 		a.Quit()
 	})
 

@@ -19,8 +19,8 @@ import (
 
 type TabEntryWithShortcut struct {
 	widget.Entry
-	Title      string
-	Filepath   string
+	title      string
+	filePath   string
 	onShortcut func(fyne.Shortcut)
 }
 
@@ -41,28 +41,29 @@ func (e *TabEntryWithShortcut) TypedShortcut(shortcut fyne.Shortcut) {
 }
 
 type TabData struct {
-	Entry *TabEntryWithShortcut
-	Tab   *container.TabItem
+	entry *TabEntryWithShortcut
+	tab   *container.TabItem
 }
 
 type TabManager struct {
-	App         fyne.App
-	Window      fyne.Window
-	Tabs        *container.AppTabs
-	LabelStatus *widget.Label
-	TabsData    []*TabData
-	FontSize    float32
-	DefaultSize float32
+	app         fyne.App
+	window      fyne.Window
+	tabs        *container.AppTabs
+	labelStatus *widget.Label
+	tabsData    []*TabData
+	fontSize    float32
+	defaultSize float32
+	menuManager *MenuManager
 }
 
 func newTabManager(app fyne.App, w fyne.Window, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
 	return &TabManager{
-		App:         app,
-		Window:      w,
-		Tabs:        container.NewAppTabs(),
-		LabelStatus: labelStatus,
-		FontSize:    defaultFontSize,
-		DefaultSize: defaultFontSize,
+		app:         app,
+		window:      w,
+		tabs:        container.NewAppTabs(),
+		labelStatus: labelStatus,
+		fontSize:    defaultFontSize,
+		defaultSize: defaultFontSize,
 	}
 }
 
@@ -72,40 +73,42 @@ func newTabManager(app fyne.App, w fyne.Window, labelStatus *widget.Label, defau
 
 func (tm *TabManager) newTab(title, content string) {
 	if title == "" {
-		title = "Untitled-" + strconv.Itoa(len(tm.TabsData)+1)
+		title = "Untitled-" + strconv.Itoa(len(tm.tabsData)+1)
 	}
 
 	entry := tm.createEntry(title, content)
 	tab := container.NewTabItem(title, container.NewStack(entry))
 
-	tm.Tabs.Append(tab)
-	tm.Tabs.Select(tab)
+	tm.tabs.Append(tab)
+	tm.tabs.Select(tab)
 
-	tm.TabsData = append(tm.TabsData, &TabData{
-		Entry: entry,
-		Tab:   tab,
-	})
+	tm.tabsData = append(tm.tabsData, &TabData{entry, tab})
 
 	tm.applyFontSize(entry)
 }
 
-func (tm *TabManager) newTabs(savedTabs []SessionEntry) {
+func (tm *TabManager) newTabs(savedTabs []TabDetail, selectedIndex int) {
 	for _, s := range savedTabs {
 		entry := tm.createEntry(s.Title, s.Text)
-		entry.Wrapping = s.Wrapping
-		entry.CursorRow = s.CursorRow
+		entry.Wrapping = fyne.TextWrap(s.Wrapping)
+		entry.CursorRow = s.CursorRow // TODO these don't seem to work
 		entry.CursorColumn = s.CursorColumn
-		entry.Filepath = s.Filepath
+		entry.filePath = s.FilePath
 		tab := container.NewTabItem(s.Title, container.NewStack(entry))
-		tm.Tabs.Append(tab)
-		tm.TabsData = append(tm.TabsData, &TabData{Entry: entry, Tab: tab})
+		tm.tabs.Append(tab)
+		tm.tabsData = append(tm.tabsData, &TabData{entry, tab})
 	}
-	tm.Tabs.SelectIndex(0)
+
+	if len(tm.tabsData) == 0 {
+		tm.newTab("", "") // default new tab
+	}
+
+	tm.tabs.SelectIndex(selectedIndex)
 }
 
 func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 	entry := &TabEntryWithShortcut{
-		Title: title,
+		title: title,
 	}
 	entry.ExtendBaseWidget(entry)
 
@@ -114,11 +117,11 @@ func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 	entry.Text = content
 
 	entry.OnChanged = func(s string) {
-		tm.LabelStatus.SetText(tm.getLabelText(entry))
+		tm.labelStatus.SetText(tm.getLabelText(entry))
 	}
 
 	entry.OnCursorChanged = func() {
-		tm.LabelStatus.SetText(tm.getLabelText(entry))
+		tm.labelStatus.SetText(tm.getLabelText(entry))
 	}
 
 	entry.onShortcut = func(shortcut fyne.Shortcut) {
@@ -133,8 +136,8 @@ func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 // -----------------------------
 
 func (tm *TabManager) getCurrentTabIndex() (int, error) {
-	index := tm.Tabs.SelectedIndex()
-	if index < 0 || index >= len(tm.TabsData) {
+	index := tm.tabs.SelectedIndex()
+	if index < 0 || index >= len(tm.tabsData) {
 		return 0, fmt.Errorf("invalid tab index")
 	}
 	return index, nil
@@ -145,7 +148,7 @@ func (tm *TabManager) getCurrentEntry() (*TabEntryWithShortcut, error) {
 	if err != nil {
 		return nil, err
 	}
-	return tm.TabsData[index].Entry, nil
+	return tm.tabsData[index].entry, nil
 }
 
 func (tm *TabManager) closeCurrentTab() {
@@ -155,8 +158,8 @@ func (tm *TabManager) closeCurrentTab() {
 		return
 	}
 
-	tm.Tabs.RemoveIndex(index)
-	tm.TabsData = append(tm.TabsData[:index], tm.TabsData[index+1:]...)
+	tm.tabs.RemoveIndex(index)
+	tm.tabsData = append(tm.tabsData[:index], tm.tabsData[index+1:]...)
 }
 
 func (tm *TabManager) printCurrentTabText() {
@@ -178,8 +181,8 @@ func (tm *TabManager) toggleWrap(entry *TabEntryWithShortcut) {
 }
 
 func (tm *TabManager) applyFontSize(entry *TabEntryWithShortcut) {
-	changeFontSize(tm.App, tm.FontSize, entry)
-	tm.LabelStatus.SetText(tm.getLabelText(entry))
+	changeFontSize(tm.app, tm.fontSize, entry)
+	tm.labelStatus.SetText(tm.getLabelText(entry))
 }
 
 func (tm *TabManager) getLabelText(entry *TabEntryWithShortcut) string {
@@ -188,7 +191,7 @@ func (tm *TabManager) getLabelText(entry *TabEntryWithShortcut) string {
 		wrap = "off"
 	}
 	return fmt.Sprintf("Ln: %d, Col: %d | %d characters | Font size: %.0fpx | Wrap: %s",
-		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), tm.FontSize, wrap)
+		entry.CursorRow+1, entry.CursorColumn+1, len(entry.Text), tm.fontSize, wrap)
 }
 
 func (tm *TabManager) showOpenFileDialog() {
@@ -200,38 +203,25 @@ func (tm *TabManager) showOpenFileDialog() {
 
 		data, err := io.ReadAll(reader)
 		if err != nil {
-			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+			dialog.ShowError(err, tm.app.Driver().AllWindows()[0])
 			return
 		}
 
 		// Create new tab
 		entry := tm.createEntry(reader.URI().Name(), string(data))
-		entry.Filepath = reader.URI().Path()
-		tab := container.NewTabItem(entry.Title, container.NewStack(entry))
+		entry.filePath = reader.URI().Path()
+		tab := container.NewTabItem(entry.title, container.NewStack(entry))
 
-		tm.Tabs.Append(tab)
-		tm.Tabs.Select(tab)
-		tm.TabsData = append(tm.TabsData, &TabData{
-			Entry: entry,
-			Tab:   tab,
+		tm.tabs.Append(tab)
+		tm.tabs.Select(tab)
+		tm.tabsData = append(tm.tabsData, &TabData{
+			entry: entry,
+			tab:   tab,
 		})
-	}, tm.App.Driver().AllWindows()[0])
+	}, tm.app.Driver().AllWindows()[0])
 
 	openDialog.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".md", ""}))
 	openDialog.Show()
-}
-
-func (tm *TabManager) showOpenFileDialogWithCallback(callback func(path string)) {
-	dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
-		if err != nil || reader == nil {
-			return
-		}
-		defer reader.Close()
-
-		if callback != nil {
-			callback(reader.URI().Path())
-		}
-	}, tm.App.Driver().AllWindows()[0]).Show()
 }
 
 func (tm *TabManager) saveCurrentFile() {
@@ -240,10 +230,10 @@ func (tm *TabManager) saveCurrentFile() {
 		return
 	}
 
-	if entry.Filepath != "" {
-		err := writeFileContent(entry.Filepath, entry.Text)
+	if entry.filePath != "" {
+		err := writeFileContent(entry.filePath, entry.Text)
 		if err != nil {
-			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+			dialog.ShowError(err, tm.app.Driver().AllWindows()[0])
 		}
 		return
 	}
@@ -261,20 +251,20 @@ func (tm *TabManager) showSaveFileDialog(entry *TabEntryWithShortcut) {
 
 		_, err = writer.Write([]byte(entry.Text))
 		if err != nil {
-			dialog.ShowError(err, tm.App.Driver().AllWindows()[0])
+			dialog.ShowError(err, tm.app.Driver().AllWindows()[0])
 			return
 		}
 
-		entry.Filepath = writer.URI().Path()
-		entry.Title = writer.URI().Name()
+		entry.filePath = writer.URI().Path()
+		entry.title = writer.URI().Name()
 
 		// Update tab title
 		index, _ := tm.getCurrentTabIndex()
-		tm.Tabs.Items[index].Text = entry.Title
-		tm.Tabs.Refresh()
-	}, tm.App.Driver().AllWindows()[0])
+		tm.tabs.Items[index].Text = entry.title
+		tm.tabs.Refresh()
+	}, tm.app.Driver().AllWindows()[0])
 
-	saveDialog.SetFileName(entry.Title + ".txt")
+	saveDialog.SetFileName(entry.title + ".txt")
 	saveDialog.Show()
 }
 
@@ -293,15 +283,15 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 		case sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl:
 			tm.closeCurrentTab()
 		case sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl:
-			if tm.FontSize > 8 {
-				tm.FontSize -= 2
+			if tm.fontSize > 8 {
+				tm.fontSize -= 2
 			}
 			tm.applyFontSize(entry)
 		case sc.KeyName == fyne.KeyEqual && sc.Modifier == fyne.KeyModifierControl:
-			tm.FontSize += 2
+			tm.fontSize += 2
 			tm.applyFontSize(entry)
 		case sc.KeyName == fyne.Key0 && sc.Modifier == fyne.KeyModifierControl:
-			tm.FontSize = tm.DefaultSize
+			tm.fontSize = tm.defaultSize
 			tm.applyFontSize(entry)
 		case sc.KeyName == fyne.KeyZ && sc.Modifier == fyne.KeyModifierAlt:
 			tm.toggleWrap(entry)
@@ -312,9 +302,8 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
 			tm.saveCurrentFile()
 		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
-			// TODO save recent files?
-			saveSession(tm.TabsData, []string{}, WindowState(tm.Window.Canvas().Size()))
-			tm.App.Quit()
+			saveSession(tm, tm.menuManager, tm.window)
+			tm.app.Quit()
 		default:
 			fmt.Println("Unhandled shortcut:", sc)
 		}
