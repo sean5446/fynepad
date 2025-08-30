@@ -1,8 +1,7 @@
 
-# GoPad
+# FynePad
 
 <img src="screenshot.png" />
-
 
 ## Uses Fyne as a GUI toolkit
 https://fyne.io/
