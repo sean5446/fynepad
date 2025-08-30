@@ -177,8 +177,24 @@ func (tm *TabManager) closeCurrentTab() {
 		return
 	}
 
-	tm.tabs.RemoveIndex(index)
-	tm.tabsData = append(tm.tabsData[:index], tm.tabsData[index+1:]...)
+	// if we don't have filepath set, ask to save
+	entry := tm.tabsData[index].entry
+	if entry.filePath == "" && entry.Text != "" {
+		confirm := dialog.NewConfirm("Close Tab", "Do you want to save changes to "+entry.title+"?", func(save bool) {
+			if save {
+				tm.showSaveFileDialog(entry)
+			} else {
+				tm.tabs.RemoveIndex(index)
+				tm.tabsData = append(tm.tabsData[:index], tm.tabsData[index+1:]...)
+			}
+		}, tm.window)
+		confirm.SetDismissText("Don't Save")
+		confirm.SetConfirmText("Save")
+		confirm.Show()
+	} else {
+		tm.tabs.RemoveIndex(index)
+		tm.tabsData = append(tm.tabsData[:index], tm.tabsData[index+1:]...)
+	}
 }
 
 func (tm *TabManager) printCurrentTabText() {

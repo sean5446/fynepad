@@ -28,7 +28,19 @@ func newMenuManager(a fyne.App, w fyne.Window, rf []string) *MenuManager {
 }
 
 func (m *MenuManager) buildMenu() {
-	openItem := fyne.NewMenuItem("Open...", func() {
+	newTabItem := fyne.NewMenuItem("New Tab", func() {
+		m.tabManager.newTab("", "")
+	})
+
+	closeTabItem := fyne.NewMenuItem("Close Tab", func() {
+		m.tabManager.closeCurrentTab()
+	})
+
+	saveItem := fyne.NewMenuItem("Save", func() {
+		m.tabManager.saveCurrentFile()
+	})
+
+	openItem := fyne.NewMenuItem("Open", func() {
 		m.showOpenFileDialogWithCallback(m.openedFileCallback)
 	})
 
@@ -37,7 +49,7 @@ func (m *MenuManager) buildMenu() {
 		m.window.Close()
 	})
 
-	fileMenuItems := []*fyne.MenuItem{openItem}
+	fileMenuItems := []*fyne.MenuItem{newTabItem, openItem, saveItem, closeTabItem}
 
 	if len(m.recentFiles) > 0 {
 		recentSubmenu := fyne.NewMenu("Recent", m.generateRecentMenuItems()...)
