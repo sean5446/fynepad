@@ -10,10 +10,10 @@ https://fyne.io/
 Fyne is pretty nice for cross platform app development.
 It's certainly more limiting than something like Electron.
 But its better in terms of resource usage.
-|             | Fyne    | Electron |
-| ----------: | :-----: | :------: |
-| Memory Used | ~125 MB | ~800 MB  |
-| Binary Size | ~50 MB  | ~200 MB  |
+| Toolkit  | Binary Size | Memory Used |
+| -------: | :---------: | :---------: |
+| Fyne     | ~40 MB      | ~125 MB     |
+| Electron | ~200 MB     | ~500 MB     |
 
 
 ## Fedora 42 Dependencies
