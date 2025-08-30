@@ -8,38 +8,29 @@ import (
 )
 
 func main() {
-	a := app.NewWithID("com.queso.mytexteditor")
+	a := app.NewWithID("com.queso.gopad")
 	w := a.NewWindow("GoPad")
 	labelStatus := widget.NewLabel("")
 
-	tabManager := newTabManager(a, labelStatus, 14)
-
-	menuManager := newMenuManager(w, tabManager)
+	tabManager := newTabManager(a, w, labelStatus, 14)
+	menuManager := newMenuManager(w, tabManager, []string{})
+	windowState := defaultWindowState
 
 	// Load session if it exists
-	if savedTabs, err := loadSession(); err == nil && len(savedTabs) > 0 {
-		for _, s := range savedTabs {
-			entry := tabManager.createEntry(s.Title, s.Text)
-			entry.Wrapping = s.Wrapping
-			entry.CursorRow = s.CursorRow
-			entry.CursorColumn = s.CursorColumn
-			entry.Filepath = s.Filepath
-			tab := container.NewTabItem(s.Title, container.NewStack(entry))
-			tabManager.Tabs.Append(tab)
-			tabManager.TabsData = append(tabManager.TabsData, &TabData{Entry: entry, Tab: tab})
-		}
-		tabManager.Tabs.SelectIndex(0)
+	if savedTabs, savedWindowState, recentFiles, err := loadSession(); err == nil && len(savedTabs) > 0 {
+		windowState = savedWindowState
+		menuManager = newMenuManager(w, tabManager, recentFiles)
+		tabManager.newTabs(savedTabs)
 	} else {
-		tabManager.NewTab("", "") // default new tab
+		tabManager.newTab("", "") // default new tab
 	}
 
 	w.SetContent(container.NewBorder(nil, labelStatus, nil, nil, tabManager.Tabs))
-	w.Resize(fyne.NewSize(800, 600))
+	w.Resize(fyne.NewSize(windowState.Width, windowState.Height))
 
 	// Save session on close
 	w.SetCloseIntercept(func() {
-		saveSession(tabManager.TabsData)
-		menuManager.saveRecentFiles()
+		saveSession(tabManager.TabsData, menuManager.recentFiles, WindowState(w.Canvas().Size()))
 		a.Quit()
 	})
 

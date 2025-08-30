@@ -2,11 +2,27 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
 	"fyne.io/fyne/v2"
 )
+
+type SessionData struct {
+	WindowState    WindowState    `json:"WindowState"`
+	SessionEntries []SessionEntry `json:"SessionEntries"`
+	RecentFiles    []string       `json:"RecentFiles"`
+}
+
+type WindowState struct {
+	Width  float32 `json:"Width"`
+	Height float32 `json:"Height"`
+	// X int `json:"X"`
+	// Y int `json:"Y"`
+}
+
+var defaultWindowState = WindowState{
+	Width:  1000,
+	Height: 800,
+}
 
 type SessionEntry struct {
 	Text         string        `json:"Text"`
@@ -19,11 +35,11 @@ type SessionEntry struct {
 
 const sessionFile = "session.json"
 
-func saveSession(entries []*TabData) error {
-	var session []SessionEntry
+func saveSession(entries []*TabData, recentFiles []string, windowState WindowState) error {
+	var tabSessions []SessionEntry
 	for _, data := range entries {
 		entry := data.Entry
-		session = append(session, SessionEntry{
+		tabSessions = append(tabSessions, SessionEntry{
 			Text:         entry.Text,
 			Wrapping:     entry.Wrapping,
 			CursorRow:    entry.CursorRow,
@@ -33,40 +49,45 @@ func saveSession(entries []*TabData) error {
 		})
 	}
 
-	bytes, err := json.MarshalIndent(session, "", "  ")
+	sessionData := SessionData{
+		WindowState: WindowState{
+			Width:  windowState.Width,
+			Height: windowState.Height,
+		},
+		SessionEntries: tabSessions,
+		RecentFiles:    recentFiles,
+	}
+
+	bytes, err := json.MarshalIndent(sessionData, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(sessionFile, bytes, 0644)
+	return writeFileContent(sessionFile, string(bytes))
 }
 
-func loadSession() ([]SessionEntry, error) {
-	if _, err := os.Stat(sessionFile); os.IsNotExist(err) {
-		return nil, nil // No session file = clean start
+func loadSession() ([]SessionEntry, WindowState, []string, error) {
+	content, err := readFileContent(sessionFile)
+	// error reading or empty content
+	if err != nil || content == "" {
+		return []SessionEntry{}, WindowState{}, []string{}, err
 	}
 
-	bytes, err := os.ReadFile(sessionFile)
-	if err != nil {
-		return nil, err
+	// there was content, but its not valid json
+	var sessionData SessionData
+	if err := json.Unmarshal([]byte(content), &sessionData); err != nil {
+		return []SessionEntry{}, WindowState{}, []string{}, err
 	}
 
-	var session []SessionEntry
-	if err := json.Unmarshal(bytes, &session); err != nil {
-		return nil, err
-	}
-
-	// If Filepath is set, try to read real content
-	for i, tab := range session {
+	// Refill Text content if file paths exist
+	for i, tab := range sessionData.SessionEntries {
 		if tab.Filepath != "" {
 			content, err := readFileContent(tab.Filepath)
 			if err == nil {
-				session[i].Text = content
-			} else {
-				fmt.Println("Warning: Could not open file from session:", err)
+				sessionData.SessionEntries[i].Text = content
 			}
 		}
 	}
 
-	return session, nil
+	return sessionData.SessionEntries, sessionData.WindowState, sessionData.RecentFiles, nil
 }

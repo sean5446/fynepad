@@ -47,6 +47,7 @@ type TabData struct {
 
 type TabManager struct {
 	App         fyne.App
+	Window      fyne.Window
 	Tabs        *container.AppTabs
 	LabelStatus *widget.Label
 	TabsData    []*TabData
@@ -54,9 +55,10 @@ type TabManager struct {
 	DefaultSize float32
 }
 
-func newTabManager(app fyne.App, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
+func newTabManager(app fyne.App, w fyne.Window, labelStatus *widget.Label, defaultFontSize float32) *TabManager {
 	return &TabManager{
 		App:         app,
+		Window:      w,
 		Tabs:        container.NewAppTabs(),
 		LabelStatus: labelStatus,
 		FontSize:    defaultFontSize,
@@ -68,7 +70,7 @@ func newTabManager(app fyne.App, labelStatus *widget.Label, defaultFontSize floa
 // Core Tab Creation
 // -----------------------------
 
-func (tm *TabManager) NewTab(title, content string) {
+func (tm *TabManager) newTab(title, content string) {
 	if title == "" {
 		title = "Untitled-" + strconv.Itoa(len(tm.TabsData)+1)
 	}
@@ -87,6 +89,20 @@ func (tm *TabManager) NewTab(title, content string) {
 	tm.applyFontSize(entry)
 }
 
+func (tm *TabManager) newTabs(savedTabs []SessionEntry) {
+	for _, s := range savedTabs {
+		entry := tm.createEntry(s.Title, s.Text)
+		entry.Wrapping = s.Wrapping
+		entry.CursorRow = s.CursorRow
+		entry.CursorColumn = s.CursorColumn
+		entry.Filepath = s.Filepath
+		tab := container.NewTabItem(s.Title, container.NewStack(entry))
+		tm.Tabs.Append(tab)
+		tm.TabsData = append(tm.TabsData, &TabData{Entry: entry, Tab: tab})
+	}
+	tm.Tabs.SelectIndex(0)
+}
+
 func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 	entry := &TabEntryWithShortcut{
 		Title: title,
@@ -100,6 +116,7 @@ func (tm *TabManager) createEntry(title, content string) *TabEntryWithShortcut {
 	entry.OnChanged = func(s string) {
 		tm.LabelStatus.SetText(tm.getLabelText(entry))
 	}
+
 	entry.OnCursorChanged = func() {
 		tm.LabelStatus.SetText(tm.getLabelText(entry))
 	}
@@ -270,9 +287,9 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 	case *desktop.CustomShortcut:
 		switch {
 		case sc.KeyName == fyne.KeyN && sc.Modifier == fyne.KeyModifierControl:
-			tm.NewTab("", "")
+			tm.newTab("", "")
 		case sc.KeyName == fyne.KeyT && sc.Modifier == fyne.KeyModifierControl:
-			tm.NewTab("", "")
+			tm.newTab("", "")
 		case sc.KeyName == fyne.KeyW && sc.Modifier == fyne.KeyModifierControl:
 			tm.closeCurrentTab()
 		case sc.KeyName == fyne.KeyMinus && sc.Modifier == fyne.KeyModifierControl:
@@ -295,8 +312,8 @@ func (tm *TabManager) handleShortcut(entry *TabEntryWithShortcut, shortcut fyne.
 		case sc.KeyName == fyne.KeyS && sc.Modifier == fyne.KeyModifierControl:
 			tm.saveCurrentFile()
 		case sc.KeyName == fyne.KeyQ && sc.Modifier == fyne.KeyModifierControl:
-			saveSession(tm.TabsData)
 			// TODO save recent files?
+			saveSession(tm.TabsData, []string{}, WindowState(tm.Window.Canvas().Size()))
 			tm.App.Quit()
 		default:
 			fmt.Println("Unhandled shortcut:", sc)

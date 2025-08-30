@@ -1,6 +1,6 @@
 module example.com/m/v2
 
-go 1.24.3
+go 1.24.6
 
 require fyne.io/fyne/v2 v2.6.1
 

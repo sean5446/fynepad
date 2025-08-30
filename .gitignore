@@ -5,3 +5,7 @@
 # default linux builds
 main
 m
+gopad
+
+# from running gopad
+session.json

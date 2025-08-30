@@ -1,9 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 
@@ -12,32 +9,31 @@ import (
 	"fyne.io/fyne/v2/dialog"
 )
 
-const recentFilePath = "recent.json"
 
-type menuManager struct {
+type MenuManager struct {
 	window      fyne.Window
 	tabManager  *TabManager
 	recentFiles []string
 }
 
-func newMenuManager(w fyne.Window, tm *TabManager) *menuManager {
-	m := &menuManager{
+func newMenuManager(w fyne.Window, tm *TabManager, rf []string) *MenuManager {
+	m := &MenuManager{
 		window:     w,
 		tabManager: tm,
+		recentFiles: rf,
 	}
 	m.loadRecentFiles()
 	m.buildMenu()
 	return m
 }
 
-func (m *menuManager) buildMenu() {
+func (m *MenuManager) buildMenu() {
 	openItem := fyne.NewMenuItem("Open...", func() {
 		m.tabManager.showOpenFileDialogWithCallback(m.openedFileCallback)
 	})
 
 	quitItem := fyne.NewMenuItem("Quit", func() {
-		_ = saveSession(m.tabManager.TabsData)
-		m.saveRecentFiles()
+		_ = saveSession(m.tabManager.TabsData, m.recentFiles, WindowState(m.window.Canvas().Size()))
 		m.window.Close()
 	})
 
@@ -65,7 +61,7 @@ func (m *menuManager) buildMenu() {
 	m.window.SetMainMenu(mainMenu)
 }
 
-func (m *menuManager) generateRecentMenuItems() []*fyne.MenuItem {
+func (m *MenuManager) generateRecentMenuItems() []*fyne.MenuItem {
 	items := make([]*fyne.MenuItem, 0, len(m.recentFiles))
 	for _, path := range m.recentFiles {
 		p := path
@@ -76,7 +72,7 @@ func (m *menuManager) generateRecentMenuItems() []*fyne.MenuItem {
 	return items
 }
 
-func (m *menuManager) openedFileCallback(path string) {
+func (m *MenuManager) openedFileCallback(path string) {
 	content, err := readFileContent(path)
 	if err != nil {
 		dialog.ShowError(err, m.window)
@@ -94,7 +90,7 @@ func (m *menuManager) openedFileCallback(path string) {
 	m.addRecentFile(path)
 }
 
-func (m *menuManager) addRecentFile(path string) {
+func (m *MenuManager) addRecentFile(path string) {
 	// Remove duplicate if exists
 	m.recentFiles = slices.DeleteFunc(m.recentFiles, func(p string) bool {
 		return p == path
@@ -108,28 +104,17 @@ func (m *menuManager) addRecentFile(path string) {
 	m.buildMenu() // refresh menu
 }
 
-func (m *menuManager) saveRecentFiles() {
-	data, err := json.MarshalIndent(m.recentFiles, "", "  ")
+func (m *MenuManager) loadRecentFiles() {
+	_, _, recentFiles, err := loadSession()
 	if err != nil {
-		fmt.Println("Failed to save recent files:", err)
 		return
 	}
-	_ = os.WriteFile(recentFilePath, data, 0644) // todo use writeFIleContent?
-}
 
-func (m *menuManager) loadRecentFiles() {
-	data, err := os.ReadFile(recentFilePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			fmt.Println("Failed to load recent files:", err)
-		}
-		return
-	}
-	_ = json.Unmarshal(data, &m.recentFiles)
+	m.recentFiles = recentFiles
 
 	// Filter non-existing files
 	m.recentFiles = slices.DeleteFunc(m.recentFiles, func(path string) bool {
-		_, err := os.Stat(path)
-		return err != nil && !os.IsNotExist(err)
+		_, err := readFileContent(path)
+		return err != nil
 	})
 }
