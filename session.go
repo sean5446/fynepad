@@ -37,7 +37,6 @@ type TabDetail struct {
 
 const sessionFile = "session.json"
 
-// TODO: either use Text or FilePath when loading and saving session
 
 func saveSession(tabManager *TabManager, menuManager *MenuManager, w fyne.Window) error {
 	var tabDetail []TabDetail

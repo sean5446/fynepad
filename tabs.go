@@ -99,7 +99,7 @@ func (tm *TabManager) newTabs(savedTabs []TabDetail, selectedIndex int) {
 	for _, s := range savedTabs {
 		entry := tm.createEntry(s.Title, s.Text)
 		entry.Wrapping = fyne.TextWrap(s.Wrapping)
-		entry.CursorRow = s.CursorRow // TODO these don't seem to work
+		entry.CursorRow = s.CursorRow
 		entry.CursorColumn = s.CursorColumn
 		entry.filePath = s.FilePath
 		tab := container.NewTabItem(s.Title, container.NewStack(entry))
