@@ -4,12 +4,20 @@
 <img src="screenshot.png" />
 
 
-## Uses Fyne for GUI toolkit
+## Uses Fyne as a GUI toolkit
 https://fyne.io/
+
+Fyne is pretty nice for cross platform app development.
+It's certainly more limiting than something like Electron.
+But its better in terms of resource usage.
+|             | Fyne    | Electron |
+| ----------: | :-----: | :------: |
+| Memory Used | ~125 MB | ~800 MB  |
+| Binary Size | ~50 MB  | ~200 MB  |
 
 
 ## Fedora 42 Dependencies
-```
+```sh
 # Linux deps (X11)
 sudo dnf install libX11-devel libXrandr-devel libXcursor-devel libXinerama-devel libXi-devel libXxf86vm-devel libX11-devel
 sudo dnf install mesa-libGL-devel
@@ -18,9 +26,8 @@ sudo dnf install mesa-libGL-devel
 sudo dnf install mingw64-gcc mingw64-crt mingw64-winpthreads mingw64-windows-default-manifest
 ```
 
-
 ## Compilation
-```
+```sh
 # for linux
 go build -o gopad
 
@@ -29,7 +36,8 @@ CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -o go
 ```
 
 ## Packaging
-```
+```sh
+# bundles executable with icon
 go install fyne.io/tools/cmd/fyne@latest
 export PATH=$PATH:$HOME/go/bin
 GOOS=windows CC=x86_64-w64-mingw32-gcc fyne package -os windows -name gopad.exe
