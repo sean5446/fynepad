@@ -7,12 +7,15 @@
 https://fyne.io/
 
 Fyne is pretty nice for cross platform app development.
-It's certainly more limiting than something like Electron.
-But its better in terms of resource usage.
+It's way more limiting than something like Electron.
+But its decent in terms of resource usage.
+I found that Wails was the most flexible and used the least resources. 
+
 | Toolkit  | Binary Size | Memory Used |
 | -------: | :---------: | :---------: |
 | Fyne     | ~40 MB      | ~125 MB     |
 | Electron | ~200 MB     | ~500 MB     |
+| Wails    | ~10 MB      | ~10 MB      |
 
 
 ## Fedora 42 Dependencies
